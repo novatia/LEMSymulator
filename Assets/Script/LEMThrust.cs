@@ -12,10 +12,32 @@ public enum TTControllerAssemblyState
 
 public class LEMThrust : MonoBehaviour
 {
-    const float RAD_TO_DEG = 57.2958f;
+    //PHY CONSTANTS
+    private float HeightError = 5478.586f;
+    private const float RAD_TO_DEG = 57.2958f;
+    private const float MOON_RADIUS_M = 1737400;
 
+    [Header("Orbit insertion")]
     public Vector3 V0;
-    public float HypergolicPropeller = 100;
+
+    [Header("APS")]
+    public float APSPropellantMass = 2352; //kg
+
+    [Header("DPS")]
+    public float DPSThrustMinLevel = 10;
+    public float DPSThrustMaxLevel = 60;
+    public float DPSPropellantMass = 8200; //kg
+    public float DPSPropellantBurnRate = 120.0f;
+    public Transform DPSThruster;
+    public AudioSource DPSAudio;
+    private bool DPSThruster_on;
+    public float DPSForce = 45040.0f;
+    public float DPSEngineLevel = 60;
+
+    [Header("RCS")]
+    public float RCSLateralForce = 110.0f;
+    public float RCSPropellantMass = 287; //kg
+    public float RCSPropellantBurnRate = 120;
 
     [Header("RCS 1")]
     public GameObject RCS1ForwardDummy;
@@ -78,89 +100,157 @@ public class LEMThrust : MonoBehaviour
     private bool RCS4_up_on;
     private bool RCS4_down_on;
 
+    [Header("Thrust/Translation Control")]
+    public float TTCFriction = 0;
+    public TTControllerAssemblyState TTState = TTControllerAssemblyState.JET;
+
+    [Header("Moon")]
+    public float MoonGravityForce = 1.62f;
+    public GameObject Moon;
 
     //TELEMETRIES
     private float Altitude;
-    private float Yaw;
-    private float Roll;
-    private float Pitch;
+
+    private float YawSpeed;
+    private float RollSpeed;
+    private float PitchSpeed;
+
+    //RIGID BODY CONFIG
+    private Rigidbody rb;
+    private float StuffMass;
+
+    private bool HustonWeHaveAProblem = false;
 
 
+
+
+    private void FixedUpdate()
+    {
+        RCSApplyThrust();
+        DPSApplyThrust();
+        UpdateRBCfg();
+        ApplyGravity();
+    }
+
+
+
+    void Start()
+    {
+        rb = GetComponent<Rigidbody>();
+        rb.velocity = V0;
+        Time.fixedDeltaTime = 0.005f;
+
+        //Time.timeScale = 30;
+
+        StuffMass = rb.mass - DPSPropellantMass - RCSPropellantMass - APSPropellantMass;
+
+        DPSOff();
+    }
+
+
+
+
+    //TELEMETRIES
     public float GetAltitude()
     {
         return Altitude;
     }
 
+    public float GetYawSpeed()
+    {
+        return YawSpeed;
+    }
+
+    public float GetRollSpeed()
+    {
+        return RollSpeed;
+    }
+
+    public float GetPitchSpeed()
+    {
+        return PitchSpeed;
+    }
+
     public float GetYaw()
     {
-        return Yaw;
+        return transform.eulerAngles.y;
     }
 
     public float GetRoll()
     {
-        return Roll;
+        return transform.eulerAngles.x;
     }
 
     public float GetPitch()
     {
-        return Pitch;
+        return transform.eulerAngles.z;
     }
 
     public float GetVelocityX()
     {
         return rb.velocity.x;
     }
+
     public float GetVelocityY()
     {
         return -rb.velocity.y;
     }
+
     public float GetVelocityZ()
     {
         return rb.velocity.z;
     }
+    
+    private void DPSOff() {
+        Debug.Log("DPS off");
+        DPSThruster.localScale = Vector3.zero;
+        DPSAudio.enabled = false;
+    }
 
-
-    private bool HustonWeHaveAProblem = false;
-
-    [Header("Thrust/Translation Control")]  
-    public float TTCFriction = 0;
-    public TTControllerAssemblyState TTState = TTControllerAssemblyState.JET;
-
-
-    [Header("RCS Forces")]
-    public float RCSLateralForce  = 110.0f;
-
-    [Header("Moon Forces")]
-    public float MoonGravityForce = 1.62f;
-
-    public GameObject Moon;
-
-    private Rigidbody rb;
-    // Start is called before the first frame update
-    void Start()
+    private void DPSOn()
     {
-        rb = GetComponent<Rigidbody>();
-        rb.velocity = V0;
+        Debug.Log("DPS on");
+        DPSThruster.localScale= new Vector3(0.106383f, 0.106383f, 0.106383f);
+        DPSAudio.enabled = true;
+        rb.AddForce( transform.up * DPSForce *255* DPSThrustMaxLevel / 100 , ForceMode.Impulse);
     }
 
     // Update is called once per frame
     void Update()
     {
-        UpdateRCSCrontrol();
+        UpdateDPSControl();
+        UpdateRCSControl();
+
         GetTelemeties();
         HustonWeHaveAProblemCheck();
     }
 
+    private void UpdateRBCfg()
+    {
+        rb.mass = rb.mass + DPSPropellantMass + RCSPropellantMass + APSPropellantMass;
+    }
+
     private void HustonWeHaveAProblemCheck() {
 
-        if (( Mathf.Abs( Yaw ) >= 180 || Mathf.Abs(Pitch ) >= 180 || Mathf.Abs(Roll ) >= 180 ) && !HustonWeHaveAProblem)
+        if (( Mathf.Abs( YawSpeed ) >= 180 || Mathf.Abs(PitchSpeed ) >= 180 || Mathf.Abs(RollSpeed ) >= 180 ) && !HustonWeHaveAProblem)
         {
             HustonWeHaveAProblem = true;
             GetComponent<AudioSource>().Play();
         }
     }
 
-    private void UpdateRCSCrontrol() {
+    private void UpdateDPSControl()
+    {
+        if (Input.GetButtonDown("DPS"))
+        {
+            DPSThruster_on = !DPSThruster_on;
+        }
+    }
+
+    private void UpdateRCSControl()
+    {
+
+      
 
 
         RCS1_up_on = false;
@@ -204,6 +294,10 @@ public class LEMThrust : MonoBehaviour
         RCS4SideLight.enabled = false;
 
 
+        if (RCSPropellantMass <= 0)
+        {
+            return;
+        }
 
         //PITCH  +
         if (Input.GetAxis("RCS1V") > 0.1f)
@@ -323,8 +417,6 @@ public class LEMThrust : MonoBehaviour
 
 
 
-
-
         /*
         if (Input.GetAxis("RCS2V") > 0.1f)
         {
@@ -385,26 +477,27 @@ public class LEMThrust : MonoBehaviour
         */
     }
 
+  
 
-    private void FixedUpdate()
-    {
-        RCSApplyThrust();
-        ApplyGravity();
+    private float GetMoonSurfaceDistance() {
+        Vector3 MoonDistance = Moon.transform.position - transform.position;
+        Altitude = (MoonDistance.magnitude - MOON_RADIUS_M - HeightError) / 1000;
+
+        return Altitude;
     }
 
     private void GetTelemeties() {
-        Vector3 MoonDistance = Moon.transform.position - transform.position;
-        Altitude = MoonDistance.magnitude;
-
-        Yaw     = rb.angularVelocity.z * RAD_TO_DEG;
-        Roll    = rb.angularVelocity.x * RAD_TO_DEG;
-        Pitch   = rb.angularVelocity.y * RAD_TO_DEG;
-        Debug.Log( Altitude+" ,"+ Yaw+" ,"+ Roll+ " ,"+ Pitch );
+        Altitude = GetMoonSurfaceDistance();
+        YawSpeed      = rb.angularVelocity.z * RAD_TO_DEG;
+        RollSpeed     = rb.angularVelocity.x * RAD_TO_DEG;
+        PitchSpeed    = rb.angularVelocity.y * RAD_TO_DEG;
+       // Debug.Log( Altitude+" ,"+ Yaw+" ,"+ Roll+ " ,"+ Pitch );
     }
 
     private void ApplyGravity()
     {
-        Vector3 moonGravity = new Vector3(0.0f, -MoonGravityForce, 0.0f);
+        Vector3 moonGravity = Vector3.Normalize(Moon.transform.position - transform.position)* MoonGravityForce;
+        //Vector3 moonGravity = new Vector3(0.0f, -MoonGravityForce, 0.0f);
 
         rb.AddForce( moonGravity , ForceMode.Acceleration);
     }
@@ -412,28 +505,31 @@ public class LEMThrust : MonoBehaviour
     private void RCSApplyThrust()
     {
 
+        float RCSForceK = RCSLateralForce * 255 ;
+
+
         if (RCS1_forward_on)
         {
             Debug.Log("RCS1L");
-            rb.AddForceAtPosition(RCS1ForwardDummy.transform.up * RCSLateralForce, RCS1ForwardDummy.transform.position);
+            rb.AddForceAtPosition(RCS1ForwardDummy.transform.up * RCSForceK, RCS1ForwardDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS1_side_on)
         {
             Debug.Log("RCS1R");
-            rb.AddForceAtPosition(RCS1SideDummy.transform.up * RCSLateralForce, RCS1SideDummy.transform.position);
+            rb.AddForceAtPosition(RCS1SideDummy.transform.up * RCSForceK, RCS1SideDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS1_up_on)
         {
             Debug.Log("RCS1U");
-            rb.AddForceAtPosition(RCS1UpDummy.transform.up * RCSLateralForce, RCS1UpDummy.transform.position);
+            rb.AddForceAtPosition(RCS1UpDummy.transform.up * RCSForceK, RCS1UpDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS1_down_on)
         {
             Debug.Log("RCS1D");
-            rb.AddForceAtPosition(RCS1DownDummy.transform.up * RCSLateralForce, RCS1DownDummy.transform.position);
+            rb.AddForceAtPosition(RCS1DownDummy.transform.up * RCSForceK, RCS1DownDummy.transform.position, ForceMode.Impulse);
         }
 
 
@@ -444,25 +540,25 @@ public class LEMThrust : MonoBehaviour
         if (RCS2_forward_on)
         {
             Debug.Log("RCS2L");
-            rb.AddForceAtPosition(RCS2ForwardDummy.transform.up * RCSLateralForce, RCS2ForwardDummy.transform.position);
+            rb.AddForceAtPosition(RCS2ForwardDummy.transform.up * RCSForceK, RCS2ForwardDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS2_side_on)
         {
             Debug.Log("RCS2R");
-            rb.AddForceAtPosition(RCS2SideDummy.transform.up * RCSLateralForce, RCS2SideDummy.transform.position);
+            rb.AddForceAtPosition(RCS2SideDummy.transform.up * RCSForceK, RCS2SideDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS2_up_on)
         {
             Debug.Log("RCS2U");
-            rb.AddForceAtPosition(RCS2UpDummy.transform.up * RCSLateralForce, RCS2UpDummy.transform.position);
+            rb.AddForceAtPosition(RCS2UpDummy.transform.up * RCSForceK, RCS2UpDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS2_down_on)
         {
             Debug.Log("RCS2D");
-            rb.AddForceAtPosition(RCS2DownDummy.transform.up * RCSLateralForce, RCS2DownDummy.transform.position);
+            rb.AddForceAtPosition(RCS2DownDummy.transform.up * RCSForceK, RCS2DownDummy.transform.position, ForceMode.Impulse);
         }
 
 
@@ -474,25 +570,25 @@ public class LEMThrust : MonoBehaviour
         if (RCS3_forward_on)
         {
             Debug.Log("RCS3L");
-            rb.AddForceAtPosition(RCS3ForwardDummy.transform.up * RCSLateralForce, RCS3ForwardDummy.transform.position);
+            rb.AddForceAtPosition(RCS3ForwardDummy.transform.up * RCSForceK, RCS3ForwardDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS3_side_on)
         {
             Debug.Log("RCS3R");
-            rb.AddForceAtPosition(RCS3SideDummy.transform.up * RCSLateralForce, RCS3SideDummy.transform.position);
+            rb.AddForceAtPosition(RCS3SideDummy.transform.up * RCSForceK, RCS3SideDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS3_up_on)
         {
             Debug.Log("RCS3U");
-            rb.AddForceAtPosition(RCS3UpDummy.transform.up * RCSLateralForce, RCS3UpDummy.transform.position);
+            rb.AddForceAtPosition(RCS3UpDummy.transform.up * RCSForceK, RCS3UpDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS3_down_on)
         {
             Debug.Log("RCS3D");
-            rb.AddForceAtPosition(RCS3DownDummy.transform.up * RCSLateralForce, RCS3DownDummy.transform.position);
+            rb.AddForceAtPosition(RCS3DownDummy.transform.up * RCSForceK, RCS3DownDummy.transform.position, ForceMode.Impulse);
         }
 
 
@@ -502,37 +598,166 @@ public class LEMThrust : MonoBehaviour
         if (RCS4_forward_on)
         {
             Debug.Log("RCS4L");
-            rb.AddForceAtPosition(RCS4ForwardDummy.transform.up * RCSLateralForce, RCS4ForwardDummy.transform.position);
+            rb.AddForceAtPosition(RCS4ForwardDummy.transform.up * RCSForceK, RCS4ForwardDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS4_side_on)
         {
             Debug.Log("RCS4R");
-            rb.AddForceAtPosition(RCS4SideDummy.transform.up * RCSLateralForce, RCS4SideDummy.transform.position);
+            rb.AddForceAtPosition(RCS4SideDummy.transform.up * RCSForceK, RCS4SideDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS4_up_on)
         {
             Debug.Log("RCS4U");
-            rb.AddForceAtPosition(RCS4UpDummy.transform.up * RCSLateralForce, RCS4UpDummy.transform.position);
+            rb.AddForceAtPosition(RCS4UpDummy.transform.up * RCSForceK, RCS4UpDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS4_down_on)
         {
             Debug.Log("RCS4D");
-            rb.AddForceAtPosition(RCS4DownDummy.transform.up * RCSLateralForce, RCS4DownDummy.transform.position);
+            rb.AddForceAtPosition(RCS4DownDummy.transform.up * RCSForceK, RCS4DownDummy.transform.position,ForceMode.Impulse);
+        }
+
+
+
+        if (RCS1_up_on)
+        {
+            RCSPropellantMass -= Time.deltaTime * RCSPropellantBurnRate;
+        }
+
+
+        if (RCS2_up_on)
+        {
+            RCSPropellantMass -= Time.deltaTime * RCSPropellantBurnRate;
+        }
+
+        if (RCS3_up_on)
+        {
+            RCSPropellantMass -= Time.deltaTime * RCSPropellantBurnRate;
+        }
+
+        if (RCS4_up_on)
+        {
+            RCSPropellantMass -= Time.deltaTime * RCSPropellantBurnRate;
+        }
+
+        if (RCS1_up_on)
+        {
+            RCSPropellantMass -= Time.deltaTime * RCSPropellantBurnRate;
+        }
+
+
+        if (RCS1_down_on)
+        {
+            RCSPropellantMass -= Time.deltaTime * RCSPropellantBurnRate;
+        }
+
+        if (RCS2_down_on)
+        {
+            RCSPropellantMass -= Time.deltaTime * RCSPropellantBurnRate;
+        }
+
+        if (RCS3_down_on)
+        {
+            RCSPropellantMass -= Time.deltaTime * RCSPropellantBurnRate;
+        }
+
+        if (RCS4_down_on)
+        {
+            RCSPropellantMass -= Time.deltaTime * RCSPropellantBurnRate;
+        }
+
+
+
+        if (RCS1_side_on)
+        {
+            RCSPropellantMass -= Time.deltaTime * RCSPropellantBurnRate;
+        }
+
+        if (RCS2_side_on)
+        {
+            RCSPropellantMass -= Time.deltaTime * RCSPropellantBurnRate;
+        }
+
+        if (RCS3_side_on)
+        {
+            RCSPropellantMass -= Time.deltaTime * RCSPropellantBurnRate;
+        }
+
+        if (RCS4_side_on)
+        {
+            RCSPropellantMass -= Time.deltaTime * RCSPropellantBurnRate;
+        }
+
+
+
+        if (RCS1_forward_on)
+        {
+            RCSPropellantMass -= Time.deltaTime * RCSPropellantBurnRate;
+        }
+
+        if (RCS2_forward_on)
+        {
+            RCSPropellantMass -= Time.deltaTime * RCSPropellantBurnRate;
+        }
+
+        if (RCS3_forward_on)
+        {
+            RCSPropellantMass -= Time.deltaTime * RCSPropellantBurnRate;
+        }
+
+        if (RCS4_forward_on)
+        {
+            RCSPropellantMass -= Time.deltaTime * RCSPropellantBurnRate;
+        }
+
+
+
+    }
+
+    private void DPSApplyThrust() {
+
+        if (DPSPropellantMass <= 0) {
+            DPSOff();
+            DPSPropellantMass = 0;
+            return;
+        }
+
+        if (DPSThruster_on)
+        {
+            DPSOn();
+        }
+        else
+        {
+            DPSOff();
+        }
+
+        if (DPSThruster_on)
+        {
+            DPSPropellantMass -= Time.deltaTime * DPSPropellantBurnRate*DPSEngineLevel/100;
         }
     }
 
-
     public void OnGUI()
     {
-        GUI.Label(new Rect(10, 10, 250, 20), "Altitude [m]: " + GetAltitude());
-        GUI.Label(new Rect(10, 30, 250, 20), "Yaw  [Deg/s]: "  + GetYaw());
-        GUI.Label(new Rect(10, 50, 250, 20), "Roll [Deg/s]: " + GetRoll());
-        GUI.Label(new Rect(10, 70, 250, 20), "Roll [Deg/s]: " + GetPitch());
-        GUI.Label(new Rect(10, 90, 250, 20), "Velocity X[Deg/s]: " + GetVelocityX());
-        GUI.Label(new Rect(10, 110, 250, 20), "Velocity Y[Deg/s]: " + GetVelocityY());
-        GUI.Label(new Rect(10, 130, 250, 20), "Velocity Z[Deg/s]: " + GetVelocityZ());
+        GUI.Label(new Rect(10, 10, 250, 20), "Altitude [km]: " + GetAltitude());
+        GUI.Label(new Rect(10, 30, 250, 20), "Yaw  Speed [Deg/s]: "  + GetYaw());
+        GUI.Label(new Rect(10, 50, 250, 20), "Roll Speed [Deg/s]: " + GetRoll());
+        GUI.Label(new Rect(10, 70, 250, 20), "Roll Speed [Deg/s]: " + GetPitch());
+        GUI.Label(new Rect(10, 90, 250, 20), "Speed X[m/s]: " + GetVelocityX());
+        GUI.Label(new Rect(10, 110, 250, 20), "Speed Y[m/s]: " + GetVelocityY());
+        GUI.Label(new Rect(10, 130, 250, 20), "Speed Z[m/s]: " + GetVelocityZ());
+
+
+        GUI.Label(new Rect(10, 150, 250, 20), "RCP Propeller [kg]: " + RCSPropellantMass);
+        GUI.Label(new Rect(10, 170, 250, 20), "APS Propeller [kg]: " + APSPropellantMass);
+        GUI.Label(new Rect(10, 190, 250, 20), "DPS Propeller [kg]: " + DPSPropellantMass);
+
+        GUI.Label(new Rect(10, 210, 250, 20), "Yaw  [Deg]: " + GetYaw());
+        GUI.Label(new Rect(10, 230, 250, 20), "Roll [Deg]: " + GetRoll());
+        GUI.Label(new Rect(10, 250, 250, 20), "Pitch [Deg]: " + GetPitch());
+
+
     }
 }
