@@ -13,7 +13,8 @@ public enum TTControllerAssemblyState
 public class LEMThrust : MonoBehaviour
 {
     //PHY CONSTANTS
-    private float HeightError = 5478.586f;
+    // private float HeightError = 5468.586f;
+    private float HeightError = 0;
     private const float RAD_TO_DEG = 57.2958f;
     private const float MOON_RADIUS_M = 1737400;
 
@@ -27,7 +28,7 @@ public class LEMThrust : MonoBehaviour
     public float DPSThrustMinLevel = 10;
     public float DPSThrustMaxLevel = 60;
     public float DPSPropellantMass = 8200; //kg
-    public float DPSPropellantBurnRate = 120.0f;
+    public float DPSPropellantBurnRate = 80.0f;
     public Transform DPSThruster;
     public AudioSource DPSAudio;
     private bool DPSThruster_on;
@@ -158,32 +159,32 @@ public class LEMThrust : MonoBehaviour
 
     public float GetYawSpeed()
     {
-        return YawSpeed;
+        return Mathf.Round(YawSpeed*1000.0f)/1000;
     }
 
     public float GetRollSpeed()
     {
-        return RollSpeed;
+        return Mathf.Round(RollSpeed * 1000.0f) / 1000;
     }
 
     public float GetPitchSpeed()
     {
-        return PitchSpeed;
+        return Mathf.Round(PitchSpeed * 1000.0f) / 1000;
     }
 
     public float GetYaw()
     {
-        return transform.eulerAngles.y;
+        return Mathf.Round(transform.eulerAngles.y * 10) / 10;
     }
 
     public float GetRoll()
     {
-        return transform.eulerAngles.x;
+        return Mathf.Round(transform.eulerAngles.x * 10) / 10;
     }
 
     public float GetPitch()
     {
-        return transform.eulerAngles.z;
+        return Mathf.Round((transform.eulerAngles.z-270)*10)/10;
     }
 
     public float GetVelocityX()
@@ -496,7 +497,8 @@ public class LEMThrust : MonoBehaviour
 
     private void ApplyGravity()
     {
-        Vector3 moonGravity = Vector3.Normalize(Moon.transform.position - transform.position)* MoonGravityForce;
+        Vector3 moonGravity = Vector3.Normalize(  Moon.transform.position - transform.position) * MoonGravityForce;
+        
         //Vector3 moonGravity = new Vector3(0.0f, -MoonGravityForce, 0.0f);
 
         rb.AddForce( moonGravity , ForceMode.Acceleration);
@@ -742,9 +744,9 @@ public class LEMThrust : MonoBehaviour
     public void OnGUI()
     {
         GUI.Label(new Rect(10, 10, 250, 20), "Altitude [km]: " + GetAltitude());
-        GUI.Label(new Rect(10, 30, 250, 20), "Yaw  Speed [Deg/s]: "  + GetYaw());
-        GUI.Label(new Rect(10, 50, 250, 20), "Roll Speed [Deg/s]: " + GetRoll());
-        GUI.Label(new Rect(10, 70, 250, 20), "Roll Speed [Deg/s]: " + GetPitch());
+        GUI.Label(new Rect(10, 30, 250, 20), "Yaw  Speed [Deg/s]: "  + GetYawSpeed());
+        GUI.Label(new Rect(10, 50, 250, 20), "Roll Speed [Deg/s]: " + GetRollSpeed());
+        GUI.Label(new Rect(10, 70, 250, 20), "Roll Speed [Deg/s]: " + GetPitchSpeed());
         GUI.Label(new Rect(10, 90, 250, 20), "Speed X[m/s]: " + GetVelocityX());
         GUI.Label(new Rect(10, 110, 250, 20), "Speed Y[m/s]: " + GetVelocityY());
         GUI.Label(new Rect(10, 130, 250, 20), "Speed Z[m/s]: " + GetVelocityZ());
@@ -757,7 +759,5 @@ public class LEMThrust : MonoBehaviour
         GUI.Label(new Rect(10, 210, 250, 20), "Yaw  [Deg]: " + GetYaw());
         GUI.Label(new Rect(10, 230, 250, 20), "Roll [Deg]: " + GetRoll());
         GUI.Label(new Rect(10, 250, 250, 20), "Pitch [Deg]: " + GetPitch());
-
-
     }
 }
