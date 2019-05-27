@@ -6,6 +6,12 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/MainScene.unity
+    path: Assets/Scenes/MainMenu.unity
+    guid: 4560774494b47a14d86f4134aa87f1a9
+  - enabled: 1
+    path: Assets/Scenes/LEMLandingSimulation.unity
     guid: 3ae05ed4e2904da44ba8139c2e6828f7
+  - enabled: 1
+    path: Assets/Scenes/LEMGroundSimulation.unity
+    guid: 5f28a17163e436a449744264fe1d6de3
   m_configObjects: {}

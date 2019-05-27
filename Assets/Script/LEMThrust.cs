@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 
 
 public enum TTControllerAssemblyState
@@ -17,6 +18,8 @@ public class LEMThrust : MonoBehaviour
     private float HeightError = 0;
     private const float RAD_TO_DEG = 57.2958f;
     private const float MOON_RADIUS_M = 1737400;
+    private const double  G_CONSTANT = 6.673e-11;
+    private const double MOON_M_KG = 7.34767309e22;
 
     [Header("Orbit insertion")]
     public Vector3 V0;
@@ -30,7 +33,10 @@ public class LEMThrust : MonoBehaviour
     public float DPSPropellantMass = 8200; //kg
     public float DPSPropellantBurnRate = 80.0f;
     public Transform DPSThruster;
+
     public AudioSource DPSAudio;
+    public AudioSource RCSAudio;
+
     private bool DPSThruster_on;
     public float DPSForce = 45040.0f;
     public float DPSEngineLevel = 60;
@@ -232,8 +238,9 @@ public class LEMThrust : MonoBehaviour
     }
 
     private void HustonWeHaveAProblemCheck() {
+        float HUSTON = 150.0f;
 
-        if (( Mathf.Abs( YawSpeed ) >= 180 || Mathf.Abs(PitchSpeed ) >= 180 || Mathf.Abs(RollSpeed ) >= 180 ) && !HustonWeHaveAProblem)
+        if (( Mathf.Abs( YawSpeed ) >= HUSTON || Mathf.Abs(PitchSpeed ) >= HUSTON || Mathf.Abs(RollSpeed ) >= HUSTON) && !HustonWeHaveAProblem)
         {
             HustonWeHaveAProblem = true;
             GetComponent<AudioSource>().Play();
@@ -250,50 +257,54 @@ public class LEMThrust : MonoBehaviour
 
     private void UpdateRCSControl()
     {
+        float RCS2H = Input.GetAxis("RCS2H");
+        float RCS2V = Input.GetAxis("RCS2V");
+        float RCS1V = Input.GetAxis("RCS1V");
+        float RCS1H = Input.GetAxis("RCS1H");
 
-      
-
-
+        //RCS1 OFF
         RCS1_up_on = false;
         RCS1_down_on = false;
         RCS1_forward_on = false;
         RCS1_side_on = false;
-
-        RCS2_up_on = false;
-        RCS2_down_on = false;
-        RCS2_forward_on = false;
-        RCS2_side_on = false;
-
-        RCS3_up_on = false;
-        RCS3_down_on = false;
-        RCS3_forward_on = false;
-        RCS3_side_on = false;
-
-        RCS4_up_on = false;
-        RCS4_down_on = false;
-        RCS4_forward_on = false;
-        RCS4_side_on = false;
 
         RCS1DownLight.enabled = false;
         RCS1UpLight.enabled = false;
         RCS1ForwardLight.enabled = false;
         RCS1SideLight.enabled = false;
 
+        //RCS2 OFF
+        RCS2_up_on = false;
+        RCS2_down_on = false;
+        RCS2_forward_on = false;
+        RCS2_side_on = false;
+
         RCS2DownLight.enabled = false;
         RCS2UpLight.enabled = false;
         RCS2ForwardLight.enabled = false;
         RCS2SideLight.enabled = false;
+
+        //RCS3 OFF
+        RCS3_up_on = false;
+        RCS3_down_on = false;
+        RCS3_forward_on = false;
+        RCS3_side_on = false;
 
         RCS3DownLight.enabled = false;
         RCS3UpLight.enabled = false;
         RCS3ForwardLight.enabled = false;
         RCS3SideLight.enabled = false;
 
+        //RCS4 OFF
+        RCS4_up_on = false;
+        RCS4_down_on = false;
+        RCS4_forward_on = false;
+        RCS4_side_on = false;
+
         RCS4DownLight.enabled = false;
         RCS4UpLight.enabled = false;
         RCS4ForwardLight.enabled = false;
         RCS4SideLight.enabled = false;
-
 
         if (RCSPropellantMass <= 0)
         {
@@ -301,7 +312,7 @@ public class LEMThrust : MonoBehaviour
         }
 
         //PITCH  +
-        if (Input.GetAxis("RCS1V") > 0.1f)
+        if (RCS1V > 0.1f)
         {
             RCS1_up_on = true;
             RCS1_down_on = false;
@@ -329,7 +340,7 @@ public class LEMThrust : MonoBehaviour
         }
 
         //PITCH  -
-        if (Input.GetAxis("RCS1V") < -0.1f)
+        if (RCS1V < -0.1f)
         {
 
             //FRONT
@@ -358,9 +369,8 @@ public class LEMThrust : MonoBehaviour
             RCS4DownLight.enabled = false;
         }
 
-
         //ROLL +
-        if (Input.GetAxis("RCS1H") > 0.1f)
+        if (RCS1H > 0.1f)
         {
             //FRONT
             RCS1_up_on = true;
@@ -388,7 +398,7 @@ public class LEMThrust : MonoBehaviour
         }
 
         //ROLL -
-        if (Input.GetAxis("RCS1H") < -0.1f)
+        if (RCS1H< -0.1f)
         {
             //FRONT
             RCS1_up_on = false;
@@ -412,77 +422,117 @@ public class LEMThrust : MonoBehaviour
             RCS3_down_on = false;
             RCS3UpLight.enabled = true;
             RCS3DownLight.enabled = false;
-
         }
 
 
-
-
-        /*
-        if (Input.GetAxis("RCS2V") > 0.1f)
+        //YAW +
+        if (RCS2H > 0.15f)
         {
+            RCS1_forward_on = true;
+            RCS1_side_on = false;
+            RCS1ForwardLight.enabled = true;
+            RCS1SideLight.enabled = false;
+
+            RCS2_forward_on = true;
+            RCS2_side_on = false;
+            RCS2ForwardLight.enabled = true;
+            RCS2SideLight.enabled = false;
+
+            RCS3_forward_on = true;
+            RCS3_side_on = false;
+            RCS3ForwardLight.enabled = true;
+            RCS3SideLight.enabled = false;
+
+            RCS4_forward_on = true;
+            RCS4_side_on = false;
+            RCS4ForwardLight.enabled = true;
+            RCS4SideLight.enabled = false;
+        }
+        
+        //YAW -
+        if (RCS2H < -0.15f)
+        {
+            //FRONT
+            RCS1_forward_on = false;
+            RCS1_side_on = true;
+            RCS1ForwardLight.enabled = false;
+            RCS1SideLight.enabled = true;
+
+            RCS2_forward_on = false;
+            RCS2_side_on = true;
+            RCS2ForwardLight.enabled = false;
+            RCS2SideLight.enabled = true;
+
+
+
+
+            //BACK
+            RCS3_forward_on = false;
+            RCS3_side_on = true;
+            RCS3ForwardLight.enabled = false;
+            RCS3SideLight.enabled = true;
+
+            RCS4_forward_on = false;
+            RCS4_side_on = true;
+            RCS4ForwardLight.enabled = false;
+            RCS4SideLight.enabled = true;
+        }
+       
+        if (RCS2V > 0.15f)
+        {
+            RCS1_up_on = true;
+            RCS1_down_on = false;
+            RCS1UpLight.enabled = true;
+            RCS1DownLight.enabled = false;
+
             RCS2_up_on = true;
             RCS2_down_on = false;
             RCS2UpLight.enabled = true;
             RCS2DownLight.enabled = false;
+
+
+
+
+
+            RCS3_up_on = true;
+            RCS3_down_on = false;
+            RCS3UpLight.enabled = true;
+            RCS3DownLight.enabled = false;
+
+            RCS4_up_on = true;
+            RCS4_down_on = false;
+            RCS4UpLight.enabled = true;
+            RCS4DownLight.enabled = false;
+
+        }
+
+        if (RCS2V < -0.15f)
+        {
+            RCS1_up_on = false;
+            RCS1_down_on = true;
+            RCS1UpLight.enabled = false;
+            RCS1DownLight.enabled = true;
+
+            RCS2_up_on = false;
+            RCS2_down_on = true;
+            RCS2UpLight.enabled = false;
+            RCS2DownLight.enabled = true;
+
+            RCS3_up_on = false;
+            RCS3_down_on = true;
+            RCS3UpLight.enabled = false;
+            RCS3DownLight.enabled = true;
 
             RCS4_up_on = false;
             RCS4_down_on = true;
             RCS4UpLight.enabled = false;
             RCS4DownLight.enabled = true;
         }
-
-        if (Input.GetAxis("RCS2V") < -0.1f)
-        {
-            RCS2_up_on = false;
-            RCS2_down_on = true;
-            RCS2UpLight.enabled = false;
-            RCS2DownLight.enabled = true;
-
-            RCS4_up_on = true;
-            RCS4_down_on = false;
-            RCS4UpLight.enabled = true;
-            RCS4DownLight.enabled = false;
-        }
-
-
-
-
-
-
-        if (Input.GetAxis("RCS2H") > 0.1f)
-        {
-            RCS2_side_on = false;
-            RCS2_forward_on = true;
-            RCS2SideLight.enabled = false;
-            RCS2ForwardLight.enabled = true;
-
-            RCS4_side_on = true;
-            RCS4_forward_on = false;
-            RCS4SideLight.enabled = true;
-            RCS4ForwardLight.enabled = false;
-        }
-
-        if (Input.GetAxis("RCS2H") < -0.1f)
-        {
-            RCS2_side_on = true;
-            RCS2_forward_on = false;
-            RCS2SideLight.enabled = true;
-            RCS2ForwardLight.enabled = false;
-           
-            RCS4_side_on = false;
-            RCS4_forward_on = true;
-            RCS4SideLight.enabled = false;
-            RCS4ForwardLight.enabled = true;
-        }
-        */
     }
-
-  
 
     private float GetMoonSurfaceDistance() {
         Vector3 MoonDistance = Moon.transform.position - transform.position;
-        Altitude = (MoonDistance.magnitude - MOON_RADIUS_M - HeightError) / 1000;
+        Altitude = (MoonDistance.magnitude - MOON_RADIUS_M ) / 1000;
 
         return Altitude;
     }
@@ -498,69 +548,68 @@ public class LEMThrust : MonoBehaviour
     private void ApplyGravity()
     {
         Vector3 moonGravity = Vector3.Normalize(  Moon.transform.position - transform.position) * MoonGravityForce;
-        
-        //Vector3 moonGravity = new Vector3(0.0f, -MoonGravityForce, 0.0f);
+        rb.AddForce( moonGravity, ForceMode.Acceleration);
 
-        rb.AddForce( moonGravity , ForceMode.Acceleration);
+        //double f = G_CONSTANT * MoonMass / (MOON_RADIUS_M+Altitude*1000);
+        //double F = Math.Sqrt(f)/10000;
+        //double v = Math.Sqrt((MOON_RADIUS_M + Altitude * 1000) * F);
+        //rb.AddForceAtPosition(Moon.transform.position, Moon.transform.position, ForceMode.Impulse);
     }
 
     private void RCSApplyThrust()
     {
 
-        float RCSForceK = RCSLateralForce * 255 ;
+        float RCSForceK = RCSLateralForce ;
 
 
         if (RCS1_forward_on)
         {
             Debug.Log("RCS1L");
-            rb.AddForceAtPosition(RCS1ForwardDummy.transform.up * RCSForceK, RCS1ForwardDummy.transform.position, ForceMode.Impulse);
+            rb.AddForceAtPosition(-RCS1ForwardDummy.transform.forward * RCSForceK, RCS1ForwardDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS1_side_on)
         {
             Debug.Log("RCS1R");
-            rb.AddForceAtPosition(RCS1SideDummy.transform.up * RCSForceK, RCS1SideDummy.transform.position, ForceMode.Impulse);
+            rb.AddForceAtPosition(-RCS1SideDummy.transform.forward * RCSForceK, RCS1SideDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS1_up_on)
         {
             Debug.Log("RCS1U");
-            rb.AddForceAtPosition(RCS1UpDummy.transform.up * RCSForceK, RCS1UpDummy.transform.position, ForceMode.Impulse);
+            rb.AddForceAtPosition(-RCS1UpDummy.transform.forward * RCSForceK, RCS1UpDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS1_down_on)
         {
             Debug.Log("RCS1D");
-            rb.AddForceAtPosition(RCS1DownDummy.transform.up * RCSForceK, RCS1DownDummy.transform.position, ForceMode.Impulse);
+            rb.AddForceAtPosition(-RCS1DownDummy.transform.forward * RCSForceK, RCS1DownDummy.transform.position, ForceMode.Impulse);
         }
 
 
-
-
-
-
+     
         if (RCS2_forward_on)
         {
             Debug.Log("RCS2L");
-            rb.AddForceAtPosition(RCS2ForwardDummy.transform.up * RCSForceK, RCS2ForwardDummy.transform.position, ForceMode.Impulse);
+            rb.AddForceAtPosition(-RCS2ForwardDummy.transform.forward * RCSForceK, RCS2ForwardDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS2_side_on)
         {
             Debug.Log("RCS2R");
-            rb.AddForceAtPosition(RCS2SideDummy.transform.up * RCSForceK, RCS2SideDummy.transform.position, ForceMode.Impulse);
+            rb.AddForceAtPosition(-RCS2SideDummy.transform.forward * RCSForceK, RCS2SideDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS2_up_on)
         {
             Debug.Log("RCS2U");
-            rb.AddForceAtPosition(RCS2UpDummy.transform.up * RCSForceK, RCS2UpDummy.transform.position, ForceMode.Impulse);
+            rb.AddForceAtPosition(-RCS2UpDummy.transform.forward * RCSForceK, RCS2UpDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS2_down_on)
         {
             Debug.Log("RCS2D");
-            rb.AddForceAtPosition(RCS2DownDummy.transform.up * RCSForceK, RCS2DownDummy.transform.position, ForceMode.Impulse);
+            rb.AddForceAtPosition(-RCS2DownDummy.transform.forward * RCSForceK, RCS2DownDummy.transform.position, ForceMode.Impulse);
         }
 
 
@@ -572,25 +621,25 @@ public class LEMThrust : MonoBehaviour
         if (RCS3_forward_on)
         {
             Debug.Log("RCS3L");
-            rb.AddForceAtPosition(RCS3ForwardDummy.transform.up * RCSForceK, RCS3ForwardDummy.transform.position, ForceMode.Impulse);
+            rb.AddForceAtPosition(-RCS3ForwardDummy.transform.forward * RCSForceK, RCS3ForwardDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS3_side_on)
         {
             Debug.Log("RCS3R");
-            rb.AddForceAtPosition(RCS3SideDummy.transform.up * RCSForceK, RCS3SideDummy.transform.position, ForceMode.Impulse);
+            rb.AddForceAtPosition(-RCS3SideDummy.transform.forward * RCSForceK, RCS3SideDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS3_up_on)
         {
             Debug.Log("RCS3U");
-            rb.AddForceAtPosition(RCS3UpDummy.transform.up * RCSForceK, RCS3UpDummy.transform.position, ForceMode.Impulse);
+            rb.AddForceAtPosition(-RCS3UpDummy.transform.forward * RCSForceK, RCS3UpDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS3_down_on)
         {
             Debug.Log("RCS3D");
-            rb.AddForceAtPosition(RCS3DownDummy.transform.up * RCSForceK, RCS3DownDummy.transform.position, ForceMode.Impulse);
+            rb.AddForceAtPosition(-RCS3DownDummy.transform.forward * RCSForceK, RCS3DownDummy.transform.position, ForceMode.Impulse);
         }
 
 
@@ -600,25 +649,25 @@ public class LEMThrust : MonoBehaviour
         if (RCS4_forward_on)
         {
             Debug.Log("RCS4L");
-            rb.AddForceAtPosition(RCS4ForwardDummy.transform.up * RCSForceK, RCS4ForwardDummy.transform.position, ForceMode.Impulse);
+            rb.AddForceAtPosition(-RCS4ForwardDummy.transform.forward * RCSForceK, RCS4ForwardDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS4_side_on)
         {
             Debug.Log("RCS4R");
-            rb.AddForceAtPosition(RCS4SideDummy.transform.up * RCSForceK, RCS4SideDummy.transform.position, ForceMode.Impulse);
+            rb.AddForceAtPosition(-RCS4SideDummy.transform.forward * RCSForceK, RCS4SideDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS4_up_on)
         {
             Debug.Log("RCS4U");
-            rb.AddForceAtPosition(RCS4UpDummy.transform.up * RCSForceK, RCS4UpDummy.transform.position, ForceMode.Impulse);
+            rb.AddForceAtPosition(-RCS4UpDummy.transform.forward * RCSForceK, RCS4UpDummy.transform.position, ForceMode.Impulse);
         }
 
         if (RCS4_down_on)
         {
             Debug.Log("RCS4D");
-            rb.AddForceAtPosition(RCS4DownDummy.transform.up * RCSForceK, RCS4DownDummy.transform.position,ForceMode.Impulse);
+            rb.AddForceAtPosition(-RCS4DownDummy.transform.forward * RCSForceK, RCS4DownDummy.transform.position,ForceMode.Impulse);
         }
 
 
@@ -716,6 +765,18 @@ public class LEMThrust : MonoBehaviour
 
 
 
+
+        if (RCS1_forward_on || RCS1_side_on || RCS1_up_on || RCS1_down_on ||
+            RCS2_forward_on || RCS2_side_on || RCS2_up_on || RCS2_down_on ||
+            RCS3_forward_on || RCS3_side_on || RCS3_up_on || RCS3_down_on ||
+            RCS4_forward_on || RCS4_side_on || RCS4_up_on || RCS4_down_on)
+        {
+            if (!RCSAudio.enabled)
+                RCSAudio.enabled = true;
+        }
+        else {
+            RCSAudio.enabled = false;
+        }
     }
 
     private void DPSApplyThrust() {
