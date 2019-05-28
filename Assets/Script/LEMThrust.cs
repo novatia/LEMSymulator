@@ -14,8 +14,6 @@ public enum TTControllerAssemblyState
 public class LEMThrust : MonoBehaviour
 {
     //PHY CONSTANTS
-    // private float HeightError = 5468.586f;
-    private float HeightError = 0;
     private const float RAD_TO_DEG = 57.2958f;
     private const float MOON_RADIUS_M = 1737400;
     private const double  G_CONSTANT = 6.673e-11;
@@ -25,26 +23,26 @@ public class LEMThrust : MonoBehaviour
     public Vector3 V0;
 
     [Header("APS")]
-    public float APSPropellantMass = 2352; //kg
+    public float APSPropellantMass; //kg
 
     [Header("DPS")]
-    public float DPSThrustMinLevel = 10;
-    public float DPSThrustMaxLevel = 60;
-    public float DPSPropellantMass = 8200; //kg
-    public float DPSPropellantBurnRate = 80.0f;
+    public float DPSThrustMinLevel;
+    public float DPSThrustMaxLevel;
+    public float DPSPropellantMass; //kg
+    public float DPSPropellantBurnRate;
     public Transform DPSThruster;
 
     public AudioSource DPSAudio;
     public AudioSource RCSAudio;
 
     private bool DPSThruster_on;
-    public float DPSForce = 45040.0f;
-    public float DPSEngineLevel = 60;
+    public float DPSForce;
+    public float DPSEngineLevel;
 
     [Header("RCS")]
-    public float RCSLateralForce = 110.0f;
-    public float RCSPropellantMass = 287; //kg
-    public float RCSPropellantBurnRate = 120;
+    public float RCSLateralForce;
+    public float RCSPropellantMass ; //kg
+    public float RCSPropellantBurnRate;
 
     [Header("RCS 1")]
     public GameObject RCS1ForwardDummy;
@@ -129,8 +127,6 @@ public class LEMThrust : MonoBehaviour
     private bool HustonWeHaveAProblem = false;
 
 
-
-
     private void FixedUpdate()
     {
         RCSApplyThrust();
@@ -153,9 +149,6 @@ public class LEMThrust : MonoBehaviour
 
         DPSOff();
     }
-
-
-
 
     //TELEMETRIES
     public float GetAltitude()
@@ -209,14 +202,14 @@ public class LEMThrust : MonoBehaviour
     }
     
     private void DPSOff() {
-        Debug.Log("DPS off");
+      //  Debug.Log("DPS off");
         DPSThruster.localScale = Vector3.zero;
         DPSAudio.enabled = false;
     }
 
     private void DPSOn()
     {
-        Debug.Log("DPS on");
+      //  Debug.Log("DPS on");
         DPSThruster.localScale= new Vector3(0.106383f, 0.106383f, 0.106383f);
         DPSAudio.enabled = true;
         rb.AddForce( transform.up * DPSForce *255* DPSThrustMaxLevel / 100 , ForceMode.Impulse);
@@ -240,7 +233,14 @@ public class LEMThrust : MonoBehaviour
     private void HustonWeHaveAProblemCheck() {
         float HUSTON = 150.0f;
 
-        if (( Mathf.Abs( YawSpeed ) >= HUSTON || Mathf.Abs(PitchSpeed ) >= HUSTON || Mathf.Abs(RollSpeed ) >= HUSTON) && !HustonWeHaveAProblem)
+        if (( (Mathf.Abs( YawSpeed ) >= HUSTON || Mathf.Abs(PitchSpeed ) >= HUSTON || Mathf.Abs(RollSpeed ) >= HUSTON)
+            ||
+            DPSPropellantMass <= 0 ||
+            RCSPropellantMass <= 0 ||
+            APSPropellantMass <= 0)
+            && !HustonWeHaveAProblem
+            
+            )
         {
             HustonWeHaveAProblem = true;
             GetComponent<AudioSource>().Play();
@@ -257,10 +257,16 @@ public class LEMThrust : MonoBehaviour
 
     private void UpdateRCSControl()
     {
+
+        bool TSelector = Input.GetButton("TSelector");
+
         float RCS2H = Input.GetAxis("RCS2H");
         float RCS2V = Input.GetAxis("RCS2V");
+
         float RCS1V = Input.GetAxis("RCS1V");
         float RCS1H = Input.GetAxis("RCS1H");
+
+        
 
         //RCS1 OFF
         RCS1_up_on = false;
@@ -369,7 +375,7 @@ public class LEMThrust : MonoBehaviour
             RCS4DownLight.enabled = false;
         }
 
-        //ROLL +
+        //YAW +
         if (RCS1H > 0.1f)
         {
             //FRONT
@@ -397,7 +403,7 @@ public class LEMThrust : MonoBehaviour
 
         }
 
-        //ROLL -
+        //YAW -
         if (RCS1H< -0.1f)
         {
             //FRONT
@@ -424,109 +430,208 @@ public class LEMThrust : MonoBehaviour
             RCS3DownLight.enabled = false;
         }
 
-
-        //YAW +
-        if (RCS2H > 0.15f)
+        if (TSelector)
         {
-            RCS1_forward_on = true;
-            RCS1_side_on = false;
-            RCS1ForwardLight.enabled = true;
-            RCS1SideLight.enabled = false;
+            //FORWARD  1S,2F
+            if (RCS2H > 0.15f)
+            {
+                RCS1_forward_on = false;
+                RCS1_side_on = true;
+                RCS1ForwardLight.enabled = false;
+                RCS1SideLight.enabled = true;
 
-            RCS2_forward_on = true;
-            RCS2_side_on = false;
-            RCS2ForwardLight.enabled = true;
-            RCS2SideLight.enabled = false;
+                RCS2_forward_on = true;
+                RCS2_side_on = false;
+                RCS2ForwardLight.enabled = true;
+                RCS2SideLight.enabled = false;
 
-            RCS3_forward_on = true;
-            RCS3_side_on = false;
-            RCS3ForwardLight.enabled = true;
-            RCS3SideLight.enabled = false;
+                RCS3_forward_on = false;
+                RCS3_side_on = false;
+                RCS3ForwardLight.enabled = false;
+                RCS3SideLight.enabled = false;
 
-            RCS4_forward_on = true;
-            RCS4_side_on = false;
-            RCS4ForwardLight.enabled = true;
-            RCS4SideLight.enabled = false;
+                RCS4_forward_on = false;
+                RCS4_side_on = false;
+                RCS4ForwardLight.enabled = false;
+                RCS4SideLight.enabled = false;
+            }
+
+            //SIDE 4F,3S
+            if (RCS2H < -0.15f)
+            {
+                //FRONT
+                RCS1_forward_on = false;
+                RCS1_side_on = false;
+                RCS1ForwardLight.enabled = false;
+                RCS1SideLight.enabled = false;
+
+                RCS2_forward_on = false;
+                RCS2_side_on = false;
+                RCS2ForwardLight.enabled = false;
+                RCS2SideLight.enabled = false;
+
+                //BACK
+                RCS3_forward_on = false;
+                RCS3_side_on = true;
+                RCS3ForwardLight.enabled = false;
+                RCS3SideLight.enabled = true;
+
+                RCS4_forward_on = true;
+                RCS4_side_on = false;
+                RCS4ForwardLight.enabled = true;
+                RCS4SideLight.enabled = false;
+            }
+
+            //FRONT  3FS,2S
+            if (RCS2V > 0.15f)
+            {
+                RCS1_forward_on = false;
+                RCS1_side_on = false;
+                RCS1ForwardLight.enabled = false;
+                RCS1SideLight.enabled = false;
+
+                RCS2_forward_on = false;
+                RCS2_side_on = true;
+                RCS2ForwardLight.enabled = false;
+                RCS2SideLight.enabled = true;
+
+                RCS3_forward_on = true;
+                RCS3_side_on = false;
+                RCS3ForwardLight.enabled = true;
+                RCS3SideLight.enabled = false;
+
+                RCS4_forward_on = false;
+                RCS4_side_on = false;
+                RCS4ForwardLight.enabled = false;
+                RCS4SideLight.enabled = false;
+            }
+
+            //BACK 4S,1F
+            if (RCS2V < -0.15f)
+            {
+                //FRONT
+                RCS1_forward_on = true;
+                RCS1_side_on = false;
+                RCS1ForwardLight.enabled = true;
+                RCS1SideLight.enabled = false;
+
+                RCS2_forward_on = false;
+                RCS2_side_on = false;
+                RCS2ForwardLight.enabled = false;
+                RCS2SideLight.enabled = false;
+
+                //BACK
+                RCS3_forward_on = false;
+                RCS3_side_on = false;
+                RCS3ForwardLight.enabled = false;
+                RCS3SideLight.enabled = false;
+
+                RCS4_forward_on = false;
+                RCS4_side_on = true;
+                RCS4ForwardLight.enabled = false;
+                RCS4SideLight.enabled = true;
+            }
         }
-        
-        //YAW -
-        if (RCS2H < -0.15f)
-        {
-            //FRONT
-            RCS1_forward_on = false;
-            RCS1_side_on = true;
-            RCS1ForwardLight.enabled = false;
-            RCS1SideLight.enabled = true;
+        else {
 
-            RCS2_forward_on = false;
-            RCS2_side_on = true;
-            RCS2ForwardLight.enabled = false;
-            RCS2SideLight.enabled = true;
+            //ROLL -
+            if (RCS2H < -0.15f)
+            {
+                //FRONT
+                RCS1_forward_on = false;
+                RCS1_side_on = true;
+                RCS1ForwardLight.enabled = false;
+                RCS1SideLight.enabled = true;
 
+                RCS2_forward_on = false;
+                RCS2_side_on = true;
+                RCS2ForwardLight.enabled = false;
+                RCS2SideLight.enabled = true;
 
+                //BACK
+                RCS3_forward_on = false;
+                RCS3_side_on = true;
+                RCS3ForwardLight.enabled = false;
+                RCS3SideLight.enabled = true;
 
+                RCS4_forward_on = false;
+                RCS4_side_on = true;
+                RCS4ForwardLight.enabled = false;
+                RCS4SideLight.enabled = true;
+            }
 
-            //BACK
-            RCS3_forward_on = false;
-            RCS3_side_on = true;
-            RCS3ForwardLight.enabled = false;
-            RCS3SideLight.enabled = true;
+            //ROLL +
+            if (RCS2H > 0.15f)
+            {
+                RCS1_forward_on = true;
+                RCS1_side_on = false;
+                RCS1ForwardLight.enabled = true;
+                RCS1SideLight.enabled = false;
 
-            RCS4_forward_on = false;
-            RCS4_side_on = true;
-            RCS4ForwardLight.enabled = false;
-            RCS4SideLight.enabled = true;
-        }
-       
-        if (RCS2V > 0.15f)
-        {
-            RCS1_up_on = true;
-            RCS1_down_on = false;
-            RCS1UpLight.enabled = true;
-            RCS1DownLight.enabled = false;
+                RCS2_forward_on = true;
+                RCS2_side_on = false;
+                RCS2ForwardLight.enabled = true;
+                RCS2SideLight.enabled = false;
 
-            RCS2_up_on = true;
-            RCS2_down_on = false;
-            RCS2UpLight.enabled = true;
-            RCS2DownLight.enabled = false;
+                RCS3_forward_on = true;
+                RCS3_side_on = false;
+                RCS3ForwardLight.enabled = true;
+                RCS3SideLight.enabled = false;
 
+                RCS4_forward_on = true;
+                RCS4_side_on = false;
+                RCS4ForwardLight.enabled = true;
+                RCS4SideLight.enabled = false;
+            }
 
+            //UP
+            if (RCS2V > 0.15f)
+            {
+                RCS1_up_on = true;
+                RCS1_down_on = false;
+                RCS1UpLight.enabled = true;
+                RCS1DownLight.enabled = false;
 
+                RCS2_up_on = true;
+                RCS2_down_on = false;
+                RCS2UpLight.enabled = true;
+                RCS2DownLight.enabled = false;
 
+                RCS3_up_on = true;
+                RCS3_down_on = false;
+                RCS3UpLight.enabled = true;
+                RCS3DownLight.enabled = false;
 
-            RCS3_up_on = true;
-            RCS3_down_on = false;
-            RCS3UpLight.enabled = true;
-            RCS3DownLight.enabled = false;
+                RCS4_up_on = true;
+                RCS4_down_on = false;
+                RCS4UpLight.enabled = true;
+                RCS4DownLight.enabled = false;
 
-            RCS4_up_on = true;
-            RCS4_down_on = false;
-            RCS4UpLight.enabled = true;
-            RCS4DownLight.enabled = false;
+            }
 
-        }
+            //DOWN
+            if (RCS2V < -0.15f)
+            {
+                RCS1_up_on = false;
+                RCS1_down_on = true;
+                RCS1UpLight.enabled = false;
+                RCS1DownLight.enabled = true;
 
-        if (RCS2V < -0.15f)
-        {
-            RCS1_up_on = false;
-            RCS1_down_on = true;
-            RCS1UpLight.enabled = false;
-            RCS1DownLight.enabled = true;
+                RCS2_up_on = false;
+                RCS2_down_on = true;
+                RCS2UpLight.enabled = false;
+                RCS2DownLight.enabled = true;
 
-            RCS2_up_on = false;
-            RCS2_down_on = true;
-            RCS2UpLight.enabled = false;
-            RCS2DownLight.enabled = true;
+                RCS3_up_on = false;
+                RCS3_down_on = true;
+                RCS3UpLight.enabled = false;
+                RCS3DownLight.enabled = true;
 
-            RCS3_up_on = false;
-            RCS3_down_on = true;
-            RCS3UpLight.enabled = false;
-            RCS3DownLight.enabled = true;
-
-            RCS4_up_on = false;
-            RCS4_down_on = true;
-            RCS4UpLight.enabled = false;
-            RCS4DownLight.enabled = true;
+                RCS4_up_on = false;
+                RCS4_down_on = true;
+                RCS4UpLight.enabled = false;
+                RCS4DownLight.enabled = true;
+            }
         }
     }
 
@@ -549,7 +654,7 @@ public class LEMThrust : MonoBehaviour
     {
         Vector3 moonGravity = Vector3.Normalize(  Moon.transform.position - transform.position) * MoonGravityForce;
         rb.AddForce( moonGravity, ForceMode.Acceleration);
-
+      
         //double f = G_CONSTANT * MoonMass / (MOON_RADIUS_M+Altitude*1000);
         //double F = Math.Sqrt(f)/10000;
         //double v = Math.Sqrt((MOON_RADIUS_M + Altitude * 1000) * F);
@@ -763,7 +868,8 @@ public class LEMThrust : MonoBehaviour
             RCSPropellantMass -= Time.deltaTime * RCSPropellantBurnRate;
         }
 
-
+        if (RCSPropellantMass <= 0.0f)
+            RCSPropellantMass = 0.0f;
 
 
         if (RCS1_forward_on || RCS1_side_on || RCS1_up_on || RCS1_down_on ||
@@ -781,7 +887,7 @@ public class LEMThrust : MonoBehaviour
 
     private void DPSApplyThrust() {
 
-        if (DPSPropellantMass <= 0) {
+        if (DPSPropellantMass <= 0.0f) {
             DPSOff();
             DPSPropellantMass = 0;
             return;
@@ -811,6 +917,7 @@ public class LEMThrust : MonoBehaviour
         GUI.Label(new Rect(10, 90, 250, 20), "Speed X[m/s]: " + GetVelocityX());
         GUI.Label(new Rect(10, 110, 250, 20), "Speed Y[m/s]: " + GetVelocityY());
         GUI.Label(new Rect(10, 130, 250, 20), "Speed Z[m/s]: " + GetVelocityZ());
+
 
 
         GUI.Label(new Rect(10, 150, 250, 20), "RCP Propeller [kg]: " + RCSPropellantMass);
