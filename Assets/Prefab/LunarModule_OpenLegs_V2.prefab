@@ -1638,10 +1638,10 @@ MonoBehaviour:
   DPSThruster: {fileID: 916266151855875822}
   DPSAudio: {fileID: 980197417018078708}
   RCSAudio: {fileID: 8879271189164625027}
-  DPSForce: 60000
+  DPSForce: 200
   DPSEngineLevel: 60
-  RCSLateralForce: 21000
-  RCSPropellantMass: 287
+  RCSLateralForce: 20000
+  RCSPropellantMass: 574
   RCSPropellantBurnRate: 1
   RCS1ForwardDummy: {fileID: 5470182279565926719}
   RCS1ForwardLight: {fileID: 9162378239791518859}
@@ -3185,6 +3185,10 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 5297894581935602820}
     m_Modifications:
+    - target: {fileID: 1000012506061754, guid: 7105fbbfff4b9af46886e2c1451b06d9, type: 3}
+      propertyPath: m_Name
+      value: Thruster
+      objectReference: {fileID: 0}
     - target: {fileID: 4000011333640090, guid: 7105fbbfff4b9af46886e2c1451b06d9, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -3241,9 +3245,17 @@ PrefabInstance:
       propertyPath: m_LocalScale.z
       value: 0.10638298
       objectReference: {fileID: 0}
-    - target: {fileID: 1000012506061754, guid: 7105fbbfff4b9af46886e2c1451b06d9, type: 3}
-      propertyPath: m_Name
-      value: Thruster
+    - target: {fileID: 4000012514445016, guid: 7105fbbfff4b9af46886e2c1451b06d9, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 6.65
+      objectReference: {fileID: 0}
+    - target: {fileID: 4000012514445016, guid: 7105fbbfff4b9af46886e2c1451b06d9, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 6.65
+      objectReference: {fileID: 0}
+    - target: {fileID: 4000012514445016, guid: 7105fbbfff4b9af46886e2c1451b06d9, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 6.65
       objectReference: {fileID: 0}
     - target: {fileID: 114000012879519352, guid: 7105fbbfff4b9af46886e2c1451b06d9,
         type: 3}
@@ -3304,18 +3316,6 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Enabled
       value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 4000012514445016, guid: 7105fbbfff4b9af46886e2c1451b06d9, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 6.65
-      objectReference: {fileID: 0}
-    - target: {fileID: 4000012514445016, guid: 7105fbbfff4b9af46886e2c1451b06d9, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 6.65
-      objectReference: {fileID: 0}
-    - target: {fileID: 4000012514445016, guid: 7105fbbfff4b9af46886e2c1451b06d9, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 6.65
       objectReference: {fileID: 0}
     - target: {fileID: 120000012857383130, guid: 7105fbbfff4b9af46886e2c1451b06d9,
         type: 3}

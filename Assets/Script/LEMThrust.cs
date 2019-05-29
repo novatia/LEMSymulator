@@ -16,7 +16,7 @@ public class LEMThrust : MonoBehaviour
     //PHY CONSTANTS
     private const float RAD_TO_DEG = 57.2958f;
     private const float MOON_RADIUS_M = 1737400;
-    private const double  G_CONSTANT = 6.673e-11;
+    private const double G_CONSTANT = 6.673e-11;
     private const double MOON_M_KG = 7.34767309e22;
 
     [Header("Orbit insertion")]
@@ -41,7 +41,7 @@ public class LEMThrust : MonoBehaviour
 
     [Header("RCS")]
     public float RCSLateralForce;
-    public float RCSPropellantMass ; //kg
+    public float RCSPropellantMass; //kg
     public float RCSPropellantBurnRate;
 
     [Header("RCS 1")]
@@ -122,30 +122,28 @@ public class LEMThrust : MonoBehaviour
 
     //RIGID BODY CONFIG
     private Rigidbody rb;
-    private float StuffMass;
 
+    //angle speed for huston message
+    private float HUSTON = 150.0f;
     private bool HustonWeHaveAProblem = false;
-
+    private bool broken = false;
 
     private void FixedUpdate()
     {
+        if (broken)
+            return;
+
         RCSApplyThrust();
         DPSApplyThrust();
         UpdateRBCfg();
         ApplyGravity();
     }
-
-
-
+    
     void Start()
     {
         rb = GetComponent<Rigidbody>();
         rb.velocity = V0;
         Time.fixedDeltaTime = 0.005f;
-
-        //Time.timeScale = 30;
-
-        StuffMass = rb.mass - DPSPropellantMass - RCSPropellantMass - APSPropellantMass;
 
         DPSOff();
     }
@@ -158,7 +156,7 @@ public class LEMThrust : MonoBehaviour
 
     public float GetYawSpeed()
     {
-        return Mathf.Round(YawSpeed*1000.0f)/1000;
+        return Mathf.Round(YawSpeed * 1000.0f) / 1000;
     }
 
     public float GetRollSpeed()
@@ -183,7 +181,7 @@ public class LEMThrust : MonoBehaviour
 
     public float GetPitch()
     {
-        return Mathf.Round((transform.eulerAngles.z-270)*10)/10;
+        return Mathf.Round((transform.eulerAngles.z - 270) * 10) / 10;
     }
 
     public float GetVelocityX()
@@ -200,29 +198,36 @@ public class LEMThrust : MonoBehaviour
     {
         return rb.velocity.z;
     }
-    
-    private void DPSOff() {
-      //  Debug.Log("DPS off");
+
+    private void DPSOff()
+    {
+        //  Debug.Log("DPS off");
         DPSThruster.localScale = Vector3.zero;
         DPSAudio.enabled = false;
     }
 
     private void DPSOn()
     {
-      //  Debug.Log("DPS on");
-        DPSThruster.localScale= new Vector3(0.106383f, 0.106383f, 0.106383f);
+        //  Debug.Log("DPS on");
+        DPSThruster.localScale = new Vector3(0.106383f, 0.106383f, 0.106383f);
         DPSAudio.enabled = true;
-        rb.AddForce( transform.up * DPSForce *255* DPSThrustMaxLevel / 100 , ForceMode.Impulse);
+
+        float DPSForceK = DPSForce * DPSThrustMaxLevel / 100 * 100000;
+
+        rb.AddForce(transform.up * DPSForceK, ForceMode.Impulse);
     }
 
     // Update is called once per frame
     void Update()
     {
-        UpdateDPSControl();
-        UpdateRCSControl();
-
         GetTelemeties();
         HustonWeHaveAProblemCheck();
+      
+        if (broken)
+            return;
+
+        UpdateDPSControl();
+        UpdateRCSControl();
     }
 
     private void UpdateRBCfg()
@@ -230,16 +235,17 @@ public class LEMThrust : MonoBehaviour
         rb.mass = rb.mass + DPSPropellantMass + RCSPropellantMass + APSPropellantMass;
     }
 
-    private void HustonWeHaveAProblemCheck() {
-        float HUSTON = 150.0f;
-
-        if (( (Mathf.Abs( YawSpeed ) >= HUSTON || Mathf.Abs(PitchSpeed ) >= HUSTON || Mathf.Abs(RollSpeed ) >= HUSTON)
+    private void HustonWeHaveAProblemCheck()
+    {
+       
+        if (((Mathf.Abs(YawSpeed) >= HUSTON || Mathf.Abs(PitchSpeed) >= HUSTON || Mathf.Abs(RollSpeed) >= HUSTON)
             ||
             DPSPropellantMass <= 0 ||
             RCSPropellantMass <= 0 ||
-            APSPropellantMass <= 0)
+            APSPropellantMass <= 0 || 
+            broken 
+            )
             && !HustonWeHaveAProblem
-            
             )
         {
             HustonWeHaveAProblem = true;
@@ -266,7 +272,7 @@ public class LEMThrust : MonoBehaviour
         float RCS1V = Input.GetAxis("RCS1V");
         float RCS1H = Input.GetAxis("RCS1H");
 
-        
+
 
         //RCS1 OFF
         RCS1_up_on = false;
@@ -329,10 +335,6 @@ public class LEMThrust : MonoBehaviour
             RCS2_down_on = false;
             RCS2UpLight.enabled = true;
             RCS2DownLight.enabled = false;
-
-
-
-
 
             RCS3_up_on = false;
             RCS3_down_on = true;
@@ -404,7 +406,7 @@ public class LEMThrust : MonoBehaviour
         }
 
         //YAW -
-        if (RCS1H< -0.1f)
+        if (RCS1H < -0.1f)
         {
             //FRONT
             RCS1_up_on = false;
@@ -532,7 +534,8 @@ public class LEMThrust : MonoBehaviour
                 RCS4SideLight.enabled = true;
             }
         }
-        else {
+        else
+        {
 
             //ROLL -
             if (RCS2H < -0.15f)
@@ -635,26 +638,39 @@ public class LEMThrust : MonoBehaviour
         }
     }
 
-    private float GetMoonSurfaceDistance() {
-        Vector3 MoonDistance = Moon.transform.position - transform.position;
-        Altitude = (MoonDistance.magnitude - MOON_RADIUS_M ) / 1000;
+    private float GetMoonSurfaceDistance()
+    {
+        //
+        //Vector3 MoonDistance = Moon.transform.position - transform.position;
+        //Altitude = (MoonDistance.magnitude - MOON_RADIUS_M) / 1000;
+        float alt = 0;
 
-        return Altitude;
+        RaycastHit hit;
+        Ray downRay = new Ray(transform.position, Moon.transform.position);
+
+        // Cast a ray straight downwards.
+        if (Physics.Raycast(downRay, out hit))
+        {
+            alt = hit.distance/1000;
+        }
+
+        return alt;
     }
 
-    private void GetTelemeties() {
+    private void GetTelemeties()
+    {
         Altitude = GetMoonSurfaceDistance();
-        YawSpeed      = rb.angularVelocity.z * RAD_TO_DEG;
-        RollSpeed     = rb.angularVelocity.x * RAD_TO_DEG;
-        PitchSpeed    = rb.angularVelocity.y * RAD_TO_DEG;
-       // Debug.Log( Altitude+" ,"+ Yaw+" ,"+ Roll+ " ,"+ Pitch );
+        YawSpeed = rb.angularVelocity.z * RAD_TO_DEG;
+        RollSpeed = rb.angularVelocity.x * RAD_TO_DEG;
+        PitchSpeed = rb.angularVelocity.y * RAD_TO_DEG;
+        // Debug.Log( Altitude+" ,"+ Yaw+" ,"+ Roll+ " ,"+ Pitch );
     }
 
     private void ApplyGravity()
     {
-        Vector3 moonGravity = Vector3.Normalize(  Moon.transform.position - transform.position) * MoonGravityForce;
-        rb.AddForce( moonGravity, ForceMode.Acceleration);
-      
+        Vector3 moonGravity = Vector3.Normalize(Moon.transform.position - transform.position) * MoonGravityForce;
+        rb.AddForce(moonGravity, ForceMode.Acceleration);
+
         //double f = G_CONSTANT * MoonMass / (MOON_RADIUS_M+Altitude*1000);
         //double F = Math.Sqrt(f)/10000;
         //double v = Math.Sqrt((MOON_RADIUS_M + Altitude * 1000) * F);
@@ -664,7 +680,7 @@ public class LEMThrust : MonoBehaviour
     private void RCSApplyThrust()
     {
 
-        float RCSForceK = RCSLateralForce ;
+        float RCSForceK = RCSLateralForce;
 
 
         if (RCS1_forward_on)
@@ -692,7 +708,7 @@ public class LEMThrust : MonoBehaviour
         }
 
 
-     
+
         if (RCS2_forward_on)
         {
             Debug.Log("RCS2L");
@@ -772,7 +788,7 @@ public class LEMThrust : MonoBehaviour
         if (RCS4_down_on)
         {
             Debug.Log("RCS4D");
-            rb.AddForceAtPosition(-RCS4DownDummy.transform.forward * RCSForceK, RCS4DownDummy.transform.position,ForceMode.Impulse);
+            rb.AddForceAtPosition(-RCS4DownDummy.transform.forward * RCSForceK, RCS4DownDummy.transform.position, ForceMode.Impulse);
         }
 
 
@@ -880,14 +896,17 @@ public class LEMThrust : MonoBehaviour
             if (!RCSAudio.enabled)
                 RCSAudio.enabled = true;
         }
-        else {
+        else
+        {
             RCSAudio.enabled = false;
         }
     }
 
-    private void DPSApplyThrust() {
+    private void DPSApplyThrust()
+    {
 
-        if (DPSPropellantMass <= 0.0f) {
+        if (DPSPropellantMass <= 0.0f)
+        {
             DPSOff();
             DPSPropellantMass = 0;
             return;
@@ -904,14 +923,14 @@ public class LEMThrust : MonoBehaviour
 
         if (DPSThruster_on)
         {
-            DPSPropellantMass -= Time.deltaTime * DPSPropellantBurnRate*DPSEngineLevel/100;
+            DPSPropellantMass -= Time.deltaTime * DPSPropellantBurnRate * DPSEngineLevel / 100;
         }
     }
 
     public void OnGUI()
     {
         GUI.Label(new Rect(10, 10, 250, 20), "Altitude [km]: " + GetAltitude());
-        GUI.Label(new Rect(10, 30, 250, 20), "Yaw  Speed [Deg/s]: "  + GetYawSpeed());
+        GUI.Label(new Rect(10, 30, 250, 20), "Yaw  Speed [Deg/s]: " + GetYawSpeed());
         GUI.Label(new Rect(10, 50, 250, 20), "Roll Speed [Deg/s]: " + GetRollSpeed());
         GUI.Label(new Rect(10, 70, 250, 20), "Roll Speed [Deg/s]: " + GetPitchSpeed());
         GUI.Label(new Rect(10, 90, 250, 20), "Speed X[m/s]: " + GetVelocityX());
@@ -927,5 +946,13 @@ public class LEMThrust : MonoBehaviour
         GUI.Label(new Rect(10, 210, 250, 20), "Yaw  [Deg]: " + GetYaw());
         GUI.Label(new Rect(10, 230, 250, 20), "Roll [Deg]: " + GetRoll());
         GUI.Label(new Rect(10, 250, 250, 20), "Pitch [Deg]: " + GetPitch());
+    }
+
+    void OnCollisionEnter(Collision collision)
+    {
+        //broken
+        if (rb.velocity.magnitude > 1.5) {
+            broken = true;
+        }
     }
 }
