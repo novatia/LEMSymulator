@@ -131,7 +131,9 @@ public class LEMThrust : MonoBehaviour
     private void FixedUpdate()
     {
         if (broken)
+        {
             return;
+        }
 
         RCSApplyThrust();
         DPSApplyThrust();
@@ -222,9 +224,13 @@ public class LEMThrust : MonoBehaviour
     {
         GetTelemeties();
         HustonWeHaveAProblemCheck();
-      
+
         if (broken)
+        {
+            RCSOff();
+            DPSOff();
             return;
+        }
 
         UpdateDPSControl();
         UpdateRCSControl();
@@ -261,19 +267,7 @@ public class LEMThrust : MonoBehaviour
         }
     }
 
-    private void UpdateRCSControl()
-    {
-
-        bool TSelector = Input.GetButton("TSelector");
-
-        float RCS2H = Input.GetAxis("RCS2H");
-        float RCS2V = Input.GetAxis("RCS2V");
-
-        float RCS1V = Input.GetAxis("RCS1V");
-        float RCS1H = Input.GetAxis("RCS1H");
-
-
-
+    private void RCSOff() {
         //RCS1 OFF
         RCS1_up_on = false;
         RCS1_down_on = false;
@@ -317,6 +311,19 @@ public class LEMThrust : MonoBehaviour
         RCS4UpLight.enabled = false;
         RCS4ForwardLight.enabled = false;
         RCS4SideLight.enabled = false;
+    }
+
+    private void UpdateRCSControl()
+    {
+        bool TSelector = Input.GetButton("TSelector");
+
+        float RCS2H = Input.GetAxis("RCS2H");
+        float RCS2V = Input.GetAxis("RCS2V");
+
+        float RCS1V = Input.GetAxis("RCS1V");
+        float RCS1H = Input.GetAxis("RCS1H");
+
+        RCSOff();
 
         if (RCSPropellantMass <= 0)
         {
@@ -668,7 +675,9 @@ public class LEMThrust : MonoBehaviour
 
     private void ApplyGravity()
     {
-        Vector3 moonGravity = Vector3.Normalize(Moon.transform.position - transform.position) * MoonGravityForce;
+        Vector3 relativePos = Moon.transform.position - transform.position;
+
+        Vector3 moonGravity = Vector3.Normalize(relativePos) * MoonGravityForce;
         rb.AddForce(moonGravity, ForceMode.Acceleration);
 
         //double f = G_CONSTANT * MoonMass / (MOON_RADIUS_M+Altitude*1000);
@@ -937,8 +946,6 @@ public class LEMThrust : MonoBehaviour
         GUI.Label(new Rect(10, 110, 250, 20), "Speed Y[m/s]: " + GetVelocityY());
         GUI.Label(new Rect(10, 130, 250, 20), "Speed Z[m/s]: " + GetVelocityZ());
 
-
-
         GUI.Label(new Rect(10, 150, 250, 20), "RCP Propeller [kg]: " + RCSPropellantMass);
         GUI.Label(new Rect(10, 170, 250, 20), "APS Propeller [kg]: " + APSPropellantMass);
         GUI.Label(new Rect(10, 190, 250, 20), "DPS Propeller [kg]: " + DPSPropellantMass);
@@ -951,7 +958,7 @@ public class LEMThrust : MonoBehaviour
     void OnCollisionEnter(Collision collision)
     {
         //broken
-        if (rb.velocity.magnitude > 1.5) {
+        if (rb.velocity.magnitude > 10) {
             broken = true;
         }
     }
